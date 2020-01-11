@@ -13,9 +13,8 @@ using namespace std;
 struct Waypoint {
 	Translation2d position;
 	double speed;
-    Rotation2d rotation;
 	string event;
-    Waypoint(Translation2d pos, Rotation2d rotation, double spd = 0.0, string completeEvent = "");
+    Waypoint(Translation2d pos, double spd = 0.0, string completeEvent = "");
 };
 
 class Path {

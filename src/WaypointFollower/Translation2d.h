@@ -34,8 +34,4 @@ public:
 	Translation2d flipX();
 	Translation2d flipY();
 
-	double getSin();
-	double getCos();
-
-
 };

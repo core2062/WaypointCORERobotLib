@@ -63,9 +63,4 @@ Translation2d Translation2d::flipX() {
 Translation2d Translation2d::flipY() {
 	return Translation2d(m_x, -m_y);
 }
-double Translation2d::getSin() {
-    return getY() / norm();
-}
-double Translation2d::getCos() {
-    return getX() / norm();
-}
+

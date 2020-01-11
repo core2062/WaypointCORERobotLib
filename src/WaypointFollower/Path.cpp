@@ -1,30 +1,37 @@
 #include "Path.h"
 
-Waypoint::Waypoint(Translation2d pos, Rotation2d rot, double spd, string completeEvent) {
+Waypoint::Waypoint(Translation2d pos, double spd, string completeEvent) {
 	position = pos;
 	speed = spd;
 	event = completeEvent;
-	rotation = rot;
 }
 
-Path::Path() : Path({Waypoint(Translation2d(), Rotation2d(), 0)}, false) {
-
-}
-
-Path::Path(vector<Waypoint> waypoints, bool flip) {
+Path::Path(vector<Waypoint> waypoints, bool flipX, bool flipY) {
 	m_waypoints = waypoints;
-	for (int i = 0; i < m_waypoints.size() - 1; i++) {
-        m_segments.emplace_back(m_waypoints[i].position, m_waypoints[i+1].position,
-                                (flip ? m_waypoints[i].rotation.inverse() : m_waypoints[i].rotation),
-                                m_waypoints[i].speed);
-	}
 
-/*	if(m_waypoints.size() > 0){
+	for (unsigned int i = 0; i < m_waypoints.size() - 1; ++i){
+		if(flipX && flipY){
+			m_segments.push_back(
+					PathSegment(m_waypoints[i].position.inverse(), m_waypoints[i+1].position.inverse(), m_waypoints[i].speed));
+		}else if(flipX){
+			std::cout << "Flipped X" << std::endl;
+			m_segments.push_back(
+					PathSegment(m_waypoints[i].position.flipX(), m_waypoints[i+1].position.flipX(), m_waypoints[i].speed));
+		}else if(flipY){
+			std::cout << "Flipped Y" << std::endl;
+			m_segments.push_back(
+					PathSegment(m_waypoints[i].position.flipY(), m_waypoints[i+1].position.flipY(), m_waypoints[i].speed));
+		}else{
+			m_segments.push_back(
+					PathSegment(m_waypoints[i].position, m_waypoints[i+1].position, m_waypoints[i].speed));
+		}
+	}
+	if(m_waypoints.size() > 0){
 		if(m_waypoints[0].event != ""){
 			m_events.push_back(m_waypoints[0].event);
 		}
 		m_waypoints.erase(m_waypoints.begin());
-	}*/
+	}
 }
 
 Path Path::fromFile(string fileName, bool flip) {
@@ -56,7 +63,6 @@ Path Path::fromText(string text, bool flip) {
                               Rotation2d::fromRadians(point["theta"].get<double>()), 100);
             if(flip) {
                 waypoint.position = waypoint.position.flipX();
-                waypoint.rotation = waypoint.rotation.inverse();
             }
             if(point["name"].get<string>() != "point") {
                 waypoint.event = point["name"].get<string>();
@@ -80,9 +86,7 @@ Path Path::fromText(string text, bool flip) {
 double Path::update(Translation2d pos) {
 	double rv = 0.0;
 	for(int i = 0; i < m_segments.size(); i++) {
-//		PathSegment segment = m_segments[i];
 		PathSegment::ClosestPointReport closestPointReport = m_segments[i].getClosestPoint(pos);
-//		cout << "Index " << closestPointReport.index << endl;
 		if (closestPointReport.index >= .99){
 			m_segments.erase(m_segments.begin() + i);
 			if(!m_waypoints.empty()){
@@ -140,7 +144,7 @@ PathSegment::Sample Path::getLookaheadPoint(Translation2d pos, double lookahead)
 
 	Translation2d posInverse = pos.inverse();
 	if(posInverse.translateBy(m_segments[0].getStart()).norm() >= lookahead){
-		return {m_segments[0].getStart(), m_segments[0].getSpeed()};
+		return PathSegment::Sample(m_segments[0].getStart(), m_segments[0].getSpeed());
 	}
 	for (auto segment : m_segments) {
         double distance = posInverse.translateBy(segment.getEnd()).norm();
@@ -148,7 +152,7 @@ PathSegment::Sample Path::getLookaheadPoint(Translation2d pos, double lookahead)
 			pair<bool, Translation2d> intersectionPoint =
                     getFirstCircleSegmentIntersection(segment, pos, lookahead);
 			if(intersectionPoint.first){
-				return {intersectionPoint.second, segment.getSpeed()};
+				return PathSegment::Sample(intersectionPoint.second, segment.getSpeed());
 			} else {
 				cout << "Error? Bad things happened" << endl;
 			}
@@ -157,14 +161,14 @@ PathSegment::Sample Path::getLookaheadPoint(Translation2d pos, double lookahead)
 
 	PathSegment lastSegment = m_segments[m_segments.size() - 1];
 	PathSegment newLastSegment = PathSegment(lastSegment.getStart(), lastSegment.interpolate(10000),
-                                             lastSegment.getAngle(), lastSegment.getSpeed());
+												lastSegment.getSpeed());
 	pair<bool, Translation2d> intersectionPoint = getFirstCircleSegmentIntersection(newLastSegment, pos,
 			lookahead);
 	if(intersectionPoint.first){
-		return {intersectionPoint.second, lastSegment.getSpeed()};
+		return PathSegment::Sample(intersectionPoint.second, lastSegment.getSpeed());
 	} else {
 		cout << "Error? REALLY Bad things happened" << endl;
-		return {lastSegment.getEnd(), lastSegment.getSpeed()};
+		return PathSegment::Sample(lastSegment.getEnd(), lastSegment.getSpeed());
 	}
 }
 
