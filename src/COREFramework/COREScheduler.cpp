@@ -82,7 +82,7 @@ void COREScheduler::robotInit() {
 		}
 	}
     m_autonChooser = new SendableChooser<COREAuton*>();
-    m_autonChooser->AddDefault("Do Nothing", nullptr);
+    m_autonChooser->SetDefaultOption("Do Nothing", nullptr);
     for(auto auton : m_autons) {
         auton->putToDashboard(m_autonChooser);
     }
