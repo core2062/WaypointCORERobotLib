@@ -26,7 +26,7 @@ public:
 		double distance;
 	};
 
-	PathSegment(Translation2d start, Translation2d end, Rotation2d angle, double speed);
+	PathSegment(Translation2d start, Translation2d end, double speed);
 
 	void updateStart(Translation2d newStart);
 

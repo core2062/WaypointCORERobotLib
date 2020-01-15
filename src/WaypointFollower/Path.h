@@ -24,7 +24,7 @@ protected:
 	vector<string> m_events;
 public:
 	Path();
-	Path(vector<Waypoint> waypoints, bool flip = false);
+	Path(vector<Waypoint> waypoints, bool flipY = false, bool flipX = false);
 	static Path fromFile(string fileName, bool flip);
 	static Path fromText(string textPath, bool flip);
 	Waypoint getFirstWaypoint();

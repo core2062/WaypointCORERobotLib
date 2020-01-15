@@ -6,7 +6,7 @@ Waypoint::Waypoint(Translation2d pos, double spd, string completeEvent) {
 	event = completeEvent;
 }
 
-Path::Path(vector<Waypoint> waypoints, bool flipX, bool flipY) {
+Path::Path(vector<Waypoint> waypoints, bool flipY, bool flipX) {
 	m_waypoints = waypoints;
 
 	for (unsigned int i = 0; i < m_waypoints.size() - 1; ++i){
@@ -56,11 +56,9 @@ Path Path::fromText(string text, bool flip) {
         return Path();
     }
 
-    //CORELog::logInfo("Json text contents:\n" + json.dump(4));
     try {
         for (auto point : json) {
-            Waypoint waypoint({point["x"].get<double>(), point["y"].get<double>()},
-                              Rotation2d::fromRadians(point["theta"].get<double>()), 100);
+            Waypoint waypoint({point["x"].get<double>(), point["y"].get<double>()}, 100);
             if(flip) {
                 waypoint.position = waypoint.position.flipX();
             }

@@ -5,10 +5,9 @@ PathSegment::Sample::Sample(Translation2d newTranslation, double newSpeed) {
 	speed = newSpeed;
 }
 
-PathSegment::PathSegment(Translation2d start, Translation2d end, Rotation2d angle, double speed) {
+PathSegment::PathSegment(Translation2d start, Translation2d end, double speed) {
 	m_end = end;
 	m_speed = speed;
-    m_angle = angle;
 	updateStart(start);
 }
 
@@ -16,7 +15,6 @@ void PathSegment::updateStart(Translation2d newStart) {
 	m_start = newStart;
 	m_startToEnd = m_start.inverse().translateBy(m_end);
 	m_length = m_startToEnd.norm();
-//	std::cout << "New Length: " << m_length << std::endl;
 }
 
 double PathSegment::getSpeed() {
@@ -60,6 +58,3 @@ PathSegment::ClosestPointReport PathSegment::getClosestPoint(Translation2d query
 	return rv;
 }
 
-Rotation2d PathSegment::getAngle() {
-    return m_angle;
-}
