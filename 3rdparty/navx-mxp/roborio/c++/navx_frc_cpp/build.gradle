@@ -1,0 +1,88 @@
+plugins {
+  id 'cpp'
+  id 'edu.wpi.first.wpilib.repositories.WPILibRepositoriesPlugin' version '2020.2'
+  id 'edu.wpi.first.NativeUtils' version '2020.7.2'
+  id 'edu.wpi.first.GradleVsCode' version '0.12.0'
+}
+
+repositories {
+    mavenCentral()
+}
+if (project.hasProperty('releaseMode')) {
+    wpilibRepositories.addAllReleaseRepositories(project)
+} else {
+    wpilibRepositories.addAllDevelopmentRepositories(project)
+}
+
+apply from: 'config.gradle'
+
+task copyFirmwareHeaders(type: Copy) {
+    into("${projectDir}/include")
+    from("${projectDir}/../../../stm32/navx-mxp") {
+		include "**/AHRS*.h"
+		include "**/IMU*.h"
+	}
+}
+
+build.dependsOn(copyFirmwareHeaders)
+
+nativeUtils {
+  exportsConfigs {
+      navx_frc {
+      }
+  }
+}
+
+model {
+  components {
+    navx_frc(NativeLibrarySpec) {
+      appendDebugPathToBinaries(binaries)
+      binaries.all {
+        if (it.targetPlatform.name == nativeUtils.wpi.platforms.roborio) {
+          it.sources {
+            athenaCpp(CppSourceSet) {
+              source {
+                srcDirs = ['src']
+                include '**/*.cpp'
+              }
+              exportedHeaders {
+                srcDirs 'include'
+              }
+            }
+          }
+        } else if (it.targetPlatform.name == nativeUtils.wpi.platforms.raspbian) {
+          it.sources {
+            raspberryCpp(CppSourceSet) {
+              source {
+                srcDirs = ['src']
+                include '**/*.cpp'
+              }
+              exportedHeaders {
+                srcDirs 'include'
+              }
+            }
+          }
+        } else {
+          it.sources {
+            desktopCpp(CppSourceSet) {
+              source {
+                srcDirs = ['src']
+                include '**/*.cpp'
+              }
+              exportedHeaders {
+                srcDirs 'include'
+              }
+            }
+          }
+        }
+      }
+      nativeUtils.useRequiredLibrary(it, "wpilibc_shared", "ntcore_shared", "hal_shared", "wpiutil_shared")
+    }
+  }
+}
+
+apply from: 'publish.gradle'
+
+wrapper {
+  gradleVersion = '6.0'
+}

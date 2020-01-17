@@ -1,0 +1,184 @@
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+ext.licenseFile = files("$rootDir/LICENSE.txt")
+
+// Retrieve version number from core navxmxp build version.txt file
+def pubVersion = rootProject.file("${System.getProperty('user.home')}/Documents/Github/navxmxp/build/version.txt").text.trim()
+
+def outputsFolder = file("$buildDir/libs")
+
+def versionFile = file("$outputsFolder/version.txt")
+
+task outputVersions() {
+    description = 'Prints the versions of wpilib to a file for use by the downstream packaging project'
+    group = 'Build'
+    outputs.files(versionFile)
+
+    doFirst {
+        buildDir.mkdir()
+        outputsFolder.mkdir()
+    }
+
+    doLast {
+        versionFile.write pubVersion
+    }
+}
+
+task libraryBuild() {}
+
+build.dependsOn outputVersions
+
+task copyAllOutputs(type: Copy) {
+    destinationDir outputsFolder
+}
+
+build.dependsOn copyAllOutputs
+copyAllOutputs.dependsOn outputVersions
+
+ext.addTaskToCopyAllOutputs = { task ->
+    copyAllOutputs.dependsOn task
+    copyAllOutputs.inputs.file task.archivePath
+    copyAllOutputs.from task.archivePath
+}
+
+def baseArtifactId = 'navx-java'
+def artifactGroupId = 'com.kauailabs.navx.frc'
+
+def customizePom(pom) {
+    pom.withXml {
+        def root = asNode()
+
+        // eliminate test-scoped dependencies (no need in maven central POMs)
+        root.dependencies.removeAll { dep ->
+            dep.scope == "test"
+        }
+
+        root.dependencies.dependency.each {
+            if (it.groupId.first().value().first().startsWith('edu.wpi.first')) {
+                assert it.parent().remove(it)
+            }
+        }		
+		
+        // add all items necessary for maven central publication
+        root.children().last() + {
+            resolveStrategy = Closure.DELEGATE_FIRST
+
+            description 'navX-MXP Robotics Navigation Sensor WPI Libraries'
+            name 'navX-MXP'
+            url 'https://github.com/kauailabs/navxmxp'
+            organization {
+                name 'com.github.kauailabs'
+                url 'https://github.com/kauailabs'
+            }
+            issueManagement {
+                system 'GitHub'
+                url 'https://github.com/kauailabs/navxmxp/issues'
+            }
+            licenses {
+                license {
+                    name 'The MIT License (MIT)'
+                    url 'https://github.com/kauailabs/navxmxp/blob/master/LICENSE.txt'
+                    distribution 'repo'
+                }
+            }
+            scm {
+                url 'https://github.com/kauailabs/navxmxp'
+                connection 'scm:git:git://github.com/kauailabs/navxmxp.git'
+                developerConnection 'scm:git:ssh://git@github.com:kauailabs/navxmxp.git'
+            }
+            developers {
+                developer {
+                    name 'kauailabs'
+                }
+            }
+        }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    classifier = 'sources'
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier = 'javadoc'
+}
+
+artifacts {
+	//archives jar
+	archives sourcesJar
+	archives javadocJar
+}
+
+signing {
+    sign publishing.publications
+}
+
+model {
+
+    tasks.generatePomFileForMavenJavaPublication {
+        destination = file("$buildDir/generated-pom.xml")
+    }
+	/*
+    tasks.publishMavenJavaPublicationToMavenLocal {
+        dependsOn project.tasks.signArchives
+    }
+    tasks.publishMavenJavaPublicationToMavenRepository {
+        dependsOn project.tasks.signArchives
+    }
+	*/
+    publishing {
+        repositories {
+            maven {
+                url "${projectDir}/../../../publish/maven"
+				url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+				credentials {
+					username sonatypeUsername
+					password sonatypePassword
+				}
+			}
+        }
+
+        publications {
+            mavenJava(MavenPublication) {
+				customizePom(pom)
+                groupId artifactGroupId
+                version pubVersion
+                artifactId = baseArtifactId
+				from components.java
+				artifact sourcesJar
+				artifact javadocJar
+/*
+				// create the sign pom artifact
+				pom.withXml {
+					def pomFile = file("${project.buildDir}/generated-pom.xml")
+					writeTo(pomFile)
+					def pomAscFile = signing.sign(pomFile).signatureFiles[0]
+					artifact(pomAscFile) {
+						classifier = null
+						extension = 'pom.asc'
+					}
+				}			
+				components.java.each {
+					print it.getName()
+				}
+				// create the signed artifacts
+				project.tasks.signArchives.signatureFiles.each {
+					artifact(it) {
+						def matcher = it.file =~ /-(sources|javadoc)\.jar.asc$/
+						if (matcher.find()) {
+							classifier = matcher.group(1)
+						} else {
+							classifier = null
+						}
+						extension = 'jar.asc'
+					}
+				}
+*/				
+            }
+        }
+    }
+}

@@ -1,0 +1,6 @@
+[submodule "3rdparty/navx-mxp"]
+	path = 3rdparty/navx-mxp
+	url = https://github.com/kauailabs/navxmxp
+[submodule "3rdparty/googletest"]
+	path = 3rdparty/googletest
+	url = https://github.com/google/googletest

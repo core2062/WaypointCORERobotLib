@@ -1,0 +1,204 @@
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+ext.licenseFile = files("$rootDir/LICENSE.txt")
+
+// Retrieve version number from core navxmxp build version.txt file
+def pubVersion = rootProject.file("${System.getProperty('user.home')}/Documents/Github/navxmxp/build/version.txt").text.trim()
+
+def outputsFolder = file("$buildDir/allOutputs")
+
+def versionFile = file("$outputsFolder/version.txt")
+
+task outputVersions() {
+    description = 'Prints the versions of wpilib to a file for use by the downstream packaging project'
+    group = 'Build'
+    outputs.files(versionFile)
+
+    doFirst {
+        buildDir.mkdir()
+        outputsFolder.mkdir()
+    }
+
+    doLast {
+        versionFile.write pubVersion
+    }
+}
+
+task libraryBuild() {}
+
+build.dependsOn outputVersions
+
+task copyAllOutputs(type: Copy) {
+    destinationDir outputsFolder
+}
+
+build.dependsOn copyAllOutputs
+copyAllOutputs.dependsOn outputVersions
+
+ext.addTaskToCopyAllOutputs = { task ->
+    copyAllOutputs.dependsOn task
+    copyAllOutputs.inputs.file task.archivePath
+    copyAllOutputs.from task.archivePath
+}
+
+def baseArtifactId = 'navx-cpp'
+def artifactGroupId = 'com.kauailabs.navx.frc'
+def zipBaseName = '_GROUP_com_kauailabs_ID_navx_frc_CLS'
+
+def customizePom(pom) {
+    pom.withXml {
+        def root = asNode()
+
+        // eliminate test-scoped dependencies (no need in maven central POMs)
+        root.dependencies.removeAll { dep ->
+            dep.scope == "test"
+        }
+
+        // add all items necessary for maven central publication
+        root.children().last() + {
+            resolveStrategy = Closure.DELEGATE_FIRST
+
+            description 'navX-MXP Robotics Navigation Sensor WPI Libraries'
+            name 'navX-MXP'
+            url 'https://github.com/kauailabs/navxmxp'
+            organization {
+                name 'com.github.kauailabs'
+                url 'https://github.com/kauailabs'
+            }
+            issueManagement {
+                system 'GitHub'
+                url 'https://github.com/kauailabs/navxmxp/issues'
+            }
+            licenses {
+                license {
+                    name 'The MIT License (MIT)'
+                    url 'https://github.com/kauailabs/navxmxp/blob/master/LICENSE.txt'
+                    distribution 'repo'
+                }
+            }
+            scm {
+                url 'https://github.com/kauailabs/navxmxp'
+                connection 'scm:git:git://github.com/kauailabs/navxmxp.git'
+                developerConnection 'scm:git:ssh://git@github.com:kauailabs/navxmxp.git'
+            }
+            developers {
+                developer {
+                    name 'kauailabs'
+                }
+            }
+        }
+    }
+}
+
+task cppHeadersZip(type: Zip) {
+    destinationDirectory = outputsFolder
+    archiveBaseName = zipBaseName
+    classifier = "headers"
+
+    from(licenseFile) {
+        into '/'
+    }
+
+    from('include') {
+        into '/'
+    }
+}
+
+task cppSourcesZip(type: Zip) {
+    destinationDirectory = outputsFolder
+    archiveBaseName = zipBaseName
+    classifier = "sources"
+
+    from(licenseFile) {
+        into '/'
+    }
+
+    from('src') {
+        into '/'
+    }
+}
+
+build.dependsOn cppHeadersZip
+addTaskToCopyAllOutputs(cppHeadersZip)
+build.dependsOn cppSourcesZip
+addTaskToCopyAllOutputs(cppSourcesZip)
+
+artifacts {
+	archives cppHeadersZip
+	archives cppSourcesZip
+}
+
+signing {
+    sign configurations.archives
+}
+
+model {
+    tasks.generatePomFileForCppPublication {
+        destination = file("$buildDir/generated-pom.xml")
+    }
+    tasks.publishCppPublicationToMavenLocal {
+        dependsOn project.tasks.signArchives
+    }
+    tasks.publishCppPublicationToMavenRepository {
+        dependsOn project.tasks.signArchives
+    }
+    publishing {
+        def navXTaskList = createComponentZipTasks($.components, ['navx_frc'], zipBaseName, Zip, project, includeStandardZipFormat)
+
+        navXTaskList.each { item ->
+            artifacts {
+                archives item
+            }
+        }
+
+        repositories {
+            maven {
+				url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+				credentials {
+					username sonatypeUsername
+					password sonatypePassword
+				}
+            }
+		}
+
+        publications {
+            Cpp(MavenPublication) {
+				customizePom(pom)
+                navXTaskList.each {
+                    artifact it
+                }
+                artifact cppHeadersZip
+				artifact cppSourcesZip
+
+                artifactId = baseArtifactId
+                groupId artifactGroupId
+                version pubVersion
+
+				// create the sign pom artifact
+				pom.withXml {
+					def pomFile = file("${project.buildDir}/generated-pom.xml")
+					writeTo(pomFile)
+					def pomAscFile = signing.sign(pomFile).signatureFiles[0]
+					artifact(pomAscFile) {
+						classifier = null
+						extension = 'pom.asc'
+					}
+				}
+				// create the signed artifacts
+				project.tasks.signArchives.signatureFiles.each {
+					artifact(it) {
+						def matcher = it.file =~ /-(sources|headers|linuxathena|linuxathenadebug|linuxathenastatic|linuxathenastaticdebug|linuxraspbian|linuxraspbiandebug|linuxraspbianstatic|linuxraspbianstaticdebug)\.zip\.asc$/
+						if (matcher.find()) {
+							classifier = matcher.group(1)
+						} else {
+							classifier = null
+						}
+						extension = 'zip.asc'
+					}
+				}
+            }
+        }
+    }
+}
