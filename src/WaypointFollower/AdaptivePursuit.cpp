@@ -3,12 +3,11 @@
 using namespace std;
 using namespace CORE;
 
-AdaptivePursuit::AdaptivePursuit(double fixedLookahead, double maxAccel, double rotationkP, double nominalDt, Path path, bool reversed,
+AdaptivePursuit::AdaptivePursuit(double fixedLookahead, double maxAccel, double nominalDt, Path path, bool reversed,
                                  double pathCompletionTolerance, bool gradualStop) :
     m_lastCommand(0, 0, 0) {
     m_fixedLookahead = fixedLookahead;
     m_maxAccel = maxAccel;
-    m_rotationkP = rotationkP;
     m_path = path;
     m_dt = nominalDt;
     m_reversed = reversed;
