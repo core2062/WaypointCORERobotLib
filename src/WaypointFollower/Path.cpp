@@ -6,6 +6,10 @@ Waypoint::Waypoint(Translation2d pos, double spd, string completeEvent) {
 	event = completeEvent;
 }
 
+Path::Path() : Path({Waypoint(Translation2d(0,0), 0, "")}, false, false) {
+
+}
+
 Path::Path(vector<Waypoint> waypoints, bool flipY, bool flipX) {
 	m_waypoints = waypoints;
 
@@ -83,12 +87,12 @@ Path Path::fromText(string text, bool flip) {
 
 double Path::update(Translation2d pos) {
 	double rv = 0.0;
-	for(int i = 0; i < m_segments.size(); i++) {
+	for(unsigned int i = 0; i < m_segments.size(); i++){
 		PathSegment::ClosestPointReport closestPointReport = m_segments[i].getClosestPoint(pos);
 		if (closestPointReport.index >= .99){
 			m_segments.erase(m_segments.begin() + i);
-			if(!m_waypoints.empty()){
-				if(!m_waypoints[0].event.empty()){
+			if(m_waypoints.size() > 0){
+				if(m_waypoints[0].event != ""){
 					m_events.push_back(m_waypoints[0].event);
 				}
 				m_waypoints.erase(m_waypoints.begin());
@@ -109,8 +113,8 @@ double Path::update(Translation2d pos) {
 					m_segments[i+1].updateStart(nextClosestPointReport.closestPoint);
 					rv = nextClosestPointReport.distance;
 					m_segments.erase(m_segments.begin() + i);
-					if(!m_waypoints.empty()){
-						if(!m_waypoints[0].event.empty()){
+					if(m_waypoints.size() > 0){
+						if(m_waypoints[0].event != ""){
 							m_events.push_back(m_waypoints[0].event);
 						}
 						m_waypoints.erase(m_waypoints.begin());
@@ -123,7 +127,7 @@ double Path::update(Translation2d pos) {
 	return rv;
 }
 
-bool Path::eventPassed(string event) {
+bool Path::eventPassed(std::string event) {
 	return (find(m_events.begin(), m_events.end(), event) != m_events.end());
 }
 
@@ -135,43 +139,45 @@ double Path::getRemainingLength() {
 	return length;
 }
 
-PathSegment::Sample Path::getLookaheadPoint(Translation2d pos, double lookahead) {
-	if(m_segments.empty()){
-		return {Translation2d(), 0};
+PathSegment::Sample Path::getLookaheadPoint(Translation2d pos,
+		double lookahead) {
+	if(m_segments.size() == 0){
+		return PathSegment::Sample(Translation2d(), 0);
 	}
 
 	Translation2d posInverse = pos.inverse();
 	if(posInverse.translateBy(m_segments[0].getStart()).norm() >= lookahead){
 		return PathSegment::Sample(m_segments[0].getStart(), m_segments[0].getSpeed());
 	}
-	for (auto segment : m_segments) {
-        double distance = posInverse.translateBy(segment.getEnd()).norm();
+	for (unsigned int i = 0; i < m_segments.size(); ++i){
+		PathSegment segment = m_segments[i];
+		double distance = posInverse.translateBy(segment.getEnd()).norm();
 		if(distance >= lookahead){
-			pair<bool, Translation2d> intersectionPoint =
-                    getFirstCircleSegmentIntersection(segment, pos, lookahead);
+			std::pair<bool, Translation2d> intersectionPoint = getFirstCircleSegmentIntersection(segment,
+					pos, lookahead);
 			if(intersectionPoint.first){
 				return PathSegment::Sample(intersectionPoint.second, segment.getSpeed());
 			} else {
-				cout << "Error? Bad things happened" << endl;
+				std::cout << "Error? Bad things happened" << std::endl;
 			}
 		}
 	}
 
 	PathSegment lastSegment = m_segments[m_segments.size() - 1];
 	PathSegment newLastSegment = PathSegment(lastSegment.getStart(), lastSegment.interpolate(10000),
-												lastSegment.getSpeed());
-	pair<bool, Translation2d> intersectionPoint = getFirstCircleSegmentIntersection(newLastSegment, pos,
+			lastSegment.getSpeed());
+	std::pair<bool, Translation2d> intersectionPoint = getFirstCircleSegmentIntersection(newLastSegment, pos,
 			lookahead);
 	if(intersectionPoint.first){
 		return PathSegment::Sample(intersectionPoint.second, lastSegment.getSpeed());
 	} else {
-		cout << "Error? REALLY Bad things happened" << endl;
+		std::cout << "Error? REALLY Bad things happened" << std::endl;
 		return PathSegment::Sample(lastSegment.getEnd(), lastSegment.getSpeed());
 	}
 }
 
-pair<bool, Translation2d> Path::getFirstCircleSegmentIntersection(PathSegment segment, Translation2d center,
-                                                                       double radius) {
+std::pair<bool, Translation2d> Path::getFirstCircleSegmentIntersection(
+		PathSegment segment, Translation2d center, double radius) {
 	double x1 = segment.getStart().getX() - center.getX();
 	double y1 = segment.getStart().getY() - center.getY();
 	double x2 = segment.getEnd().getX() - center.getX();
@@ -182,7 +188,7 @@ pair<bool, Translation2d> Path::getFirstCircleSegmentIntersection(PathSegment se
 	double det = x1 * y2 - x2 * y1;
 
 	double discriminant = drSquared *radius * radius - det * det;
-	if (discriminant < 0) {
+	if (discriminant < 0){
 		return {false, Translation2d()};
 	}
 
@@ -213,18 +219,18 @@ Waypoint Path::getFirstWaypoint() {
     return m_waypoints[0];
 }
 
-Position2d Path::getClosestPoint(Translation2d pos) {
-    Position2d closestPoint = Position2d(m_segments[0].getStart(), m_segments[0].getAngle());
-    double closestDistance = hypot(pos.getX() - closestPoint.getTranslation().getX(),
-                            pos.getY() - closestPoint.getTranslation().getY());
-    for (unsigned int i = 1; i < m_segments.size(); i++){
-        PathSegment segment = m_segments[i];
-        double distance = hypot(pos.getX() - segment.getStart().getX(),
-                                pos.getY() - segment.getStart().getY());
-        if(distance < closestDistance) {
-            closestPoint = Position2d(segment.getStart(), segment.getAngle());
-            closestDistance = distance;
-        }
-    }
-    return closestPoint;
-}
+// Position2d Path::getClosestPoint(Translation2d pos) {
+//     Position2d closestPoint = Position2d(m_segments[0].getStart(), m_segments[0].getAngle());
+//     double closestDistance = hypot(pos.getX() - closestPoint.getTranslation().getX(),
+//                             pos.getY() - closestPoint.getTranslation().getY());
+//     for (unsigned int i = 1; i < m_segments.size(); i++){
+//         PathSegment segment = m_segments[i];
+//         double distance = hypot(pos.getX() - segment.getStart().getX(),
+//                                 pos.getY() - segment.getStart().getY());
+//         if(distance < closestDistance) {
+//             closestPoint = Position2d(segment.getStart(), segment.getAngle());
+//             closestDistance = distance;
+//         }
+//     }
+//     return closestPoint;
+// }

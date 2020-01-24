@@ -34,7 +34,6 @@ public:
 	Translation2d getStart();
 	Translation2d getEnd();
 	double getLength();
-	Rotation2d getAngle();
 
 	Translation2d interpolate(double index);
 	double dotProduct(Translation2d other);

@@ -13,8 +13,8 @@ using namespace std;
 struct Waypoint {
 	Translation2d position;
 	double speed;
-	string event;
-    Waypoint(Translation2d pos, double spd = 0.0, string completeEvent = "");
+	std::string event;
+	Waypoint(Translation2d pos = Translation2d(0,0), double spd = 0.0, std::string completeEvent = "");
 };
 
 class Path {
@@ -26,7 +26,7 @@ public:
 	Path();
 	Path(vector<Waypoint> waypoints, bool flipY = false, bool flipX = false);
 	static Path fromFile(string fileName, bool flip);
-	static Path fromText(string textPath, bool flip);
+	static Path fromText(string text, bool flip);
 	Waypoint getFirstWaypoint();
 	double update(Translation2d pos);
 	bool eventPassed(string event);
@@ -34,5 +34,5 @@ public:
 	PathSegment::Sample getLookaheadPoint(Translation2d pos, double lookahead);
 	pair<bool, Translation2d> getFirstCircleSegmentIntersection(PathSegment segment, Translation2d center,
 																	 double radius);
-	Position2d getClosestPoint(Translation2d pos);
+	// Position2d getClosestPoint(Translation2d pos);
 };
