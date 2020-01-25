@@ -37,7 +37,7 @@ model {
             zlib {
                 // headers.srcDir "3rdparty/zlib"
                 binaries.withType(SharedLibraryBinarySpec) {
-                    linker.args ("-L../3rdparty/zlib/lib",'-lz')
+                    linker.args ("-L/Users/Public/robotlib2020",'-lz')
                 }
             }
         }
