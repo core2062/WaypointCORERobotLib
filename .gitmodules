@@ -6,7 +6,7 @@
 	url = https://github.com/google/googletest
 [submodule "3rdparty/zlib"]
 	path = 3rdparty/zlib
-	url = https://github.com/madler/zlib
+	url = https://github.com/core2062/zlib.git
 [submodule "3rdparty/seasocks"]
 	path = 3rdparty/seasocks
 	url = https://github.com/core2062/seasocks.git
