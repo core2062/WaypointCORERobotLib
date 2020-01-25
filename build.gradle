@@ -49,6 +49,7 @@ model {
                 source {
                     srcDir "src"
                     srcDir "3rdparty/seasocks/src/main/c"
+                    srcDir "3rdparty/seasocks/src/main/web"
                     include "**/*.cpp"
                     exclude "CORESimulation"
                 }
